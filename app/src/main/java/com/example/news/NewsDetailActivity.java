@@ -6,6 +6,8 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.speech.tts.TextToSpeech;
+import android.util.Log;
 import android.view.View;
 import android.view.WindowInsetsController;
 import android.widget.Button;
@@ -17,9 +19,13 @@ import com.bumptech.glide.Glide;
 import com.example.news.utils.DbHelper;
 
 import java.util.List;
+import java.util.Locale;
 
-public class NewsDetailActivity extends AppCompatActivity {
-    ImageView goBackFromDetails, imgOfNews1;
+public class NewsDetailActivity extends AppCompatActivity implements TextToSpeech.OnInitListener {
+
+    private TextToSpeech textToSpeech;
+
+    ImageView goBackFromDetails, imgOfNews1, mic;
     TextView newsSource1, newsTitle1, newsTimeAgo1, newsContent1;
     Button learnMore;
     ImageView likeNews, saveNews, shareNews;
@@ -60,6 +66,7 @@ public class NewsDetailActivity extends AppCompatActivity {
         likeNews = findViewById(R.id.likeNews);
         saveNews = findViewById(R.id.saveNews);
         shareNews = findViewById(R.id.shareNews);
+        mic = findViewById(R.id.speechMic);
 
         Glide.with(this).load(imgUrl).into(imgOfNews1);
         newsSource1.setText(source);
@@ -67,6 +74,8 @@ public class NewsDetailActivity extends AppCompatActivity {
         newsSource1.setText(source);
         newsTimeAgo1.setText(timeAgo);
         newsContent1.setText(content);
+
+        textToSpeech = new TextToSpeech(this, this);
 
         learnMore.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -85,6 +94,13 @@ public class NewsDetailActivity extends AppCompatActivity {
             }
         });
 
+        mic.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                readNews();
+            }
+        });
+
         likeNews.setOnClickListener(v -> {
             Glide.with(getApplicationContext()).load(R.drawable.liked_clicked).into(likeNews);
             addNewsToLikeSection(imgUrl, source, title, timeAgo, urlToWeb, content);
@@ -97,7 +113,6 @@ public class NewsDetailActivity extends AppCompatActivity {
         shareNews.setOnClickListener(v -> {
             Glide.with(getApplicationContext()).load(R.drawable.send_clicked).into(shareNews);
         });
-
     }
 
     private void addNewsToLikeSection(String imgUrl, String source, String title, String timeAgo, String urlToWeb, String content) {
@@ -105,10 +120,40 @@ public class NewsDetailActivity extends AppCompatActivity {
         Toast.makeText(this, "Added to favourites section", Toast.LENGTH_SHORT).show();
     }
 
+    private void readNews(){
+        textToSpeech.speak(newsContent1.getText(), TextToSpeech.QUEUE_FLUSH, null, null);
+    }
+
     @Override
     public void onBackPressed() {
         super.onBackPressed();
         startActivity(new Intent(NewsDetailActivity.this, MainActivity.class));
         finish();
+    }
+
+    @Override
+    public void onInit(int status) {
+        if (status == TextToSpeech.SUCCESS){
+            int result = textToSpeech.setLanguage(Locale.US);
+
+            if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED){
+                Log.e("TTS", "Language not supported");
+            }
+            else{
+                Log.d("TTS", "Initialized");
+            }
+        }
+        else{
+            Log.e("TTS", "Initialization failed");
+        }
+    }
+
+    @Override
+    protected void onDestroy(){
+        if (textToSpeech!= null){
+            textToSpeech.stop();
+            textToSpeech.shutdown();
+        }
+        super.onDestroy();
     }
 }
